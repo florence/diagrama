@@ -9,6 +9,6 @@
 
 (define build-deps '())
 
-(define pkg-desc "Implementation part of `diagarama`")
+(define pkg-desc "Implementation part of `diagrama`")
 
 (define version "0.1")
