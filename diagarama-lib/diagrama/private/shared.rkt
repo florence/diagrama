@@ -1,7 +1,7 @@
 #lang racket/base
 (provide
- (struct-out cpict)
- (struct-out cpict-state)
+ (struct-out diagram)
+ (struct-out diagram-state)
  line-width
  unit
  to-coord
@@ -12,14 +12,14 @@
  state-set-unit)
 (require pict/convert pict racket/match racket/draw racket/class)
 
-(struct cpict (f)
+(struct diagram (f)
   #:property prop:procedure (struct-field-index f)
   #:property prop:pict-convertible
-  (lambda (x) (draw-diagram (cpict-f x))))
+  (lambda (x) (draw-diagram (diagram-f x))))
 
 (define (draw-diagram c)
   (define-values (draw state) (c (new-state 0 0)))
-  (match-define (cpict-state x y min-x min-y max-x max-y unit _) state)
+  (match-define (diagram-state x y min-x min-y max-x max-y unit _) state)
   (define margin unit)
   (define w (- max-x min-x))
   (define h (- max-y min-y))
@@ -44,33 +44,33 @@
 (define (to-coord unit m)
   (+ (* m unit) (/ unit 2)))
 
-(struct cpict-state
+(struct diagram-state
   (x y min-x min-y max-x max-y unit coord-tags)
   #:transparent)
 
 (define (new-state x y)
-  (cpict-state x y x y x y unit (hash)))
+  (diagram-state x y x y x y unit (hash)))
 
 (define (move-state-to s x y)
-  (match-define (cpict-state _ _ vx vy ^x ^y unit tags) s)
-  (cpict-state x y
+  (match-define (diagram-state _ _ vx vy ^x ^y unit tags) s)
+  (diagram-state x y
                (min x vx) (min y vy)
                (max x ^x) (max y ^y)
                unit
                tags))
 (define (state-add-tag s t)
-  (match-define (cpict-state x y vx vy ^x ^y unit tags) s)
-  (cpict-state x y
+  (match-define (diagram-state x y vx vy ^x ^y unit tags) s)
+  (diagram-state x y
                vx vy ^x ^y
                unit
                (hash-set tags t (list x y))))
 
 (define (state-get-tag s t)
-  (hash-ref (cpict-state-coord-tags s) t))
+  (hash-ref (diagram-state-coord-tags s) t))
 
 (define (state-set-unit s u)
-  (match-define (cpict-state x y vx vy ^x ^y _ tags) s)
-  (cpict-state x y
+  (match-define (diagram-state x y vx vy ^x ^y _ tags) s)
+  (diagram-state x y
                (min x vx) (min y vy)
                (max x ^x) (max y ^y)
                u

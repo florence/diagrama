@@ -2,77 +2,77 @@
 (require racket/contract)
 (provide
  (contract-out
-  [cpict? predicate/c]
+  [diagram? predicate/c]
   [to-coord (-> positive? real? real?)]
-  [units (-> positive? cpict?)]
-  [pure (-> pict-convertible? cpict?)]
-  [move-to (-> real? real? cpict?)]
-  [tag-location (-> any/c cpict?)]
-  [move-right (-> real? cpict?)]
-  [move-left (-> real? cpict?)]
-  [move-down (-> real? cpict?)]
-  [move-up (-> real? cpict?)]
-  [move-to-tag (-> any/c cpict?)]
-  [line-to (-> real? real? cpict?)]
-  [line-left (-> real? cpict?)]
-  [line-right (-> real? cpict?)]
-  [line-down (-> real? cpict?)]
-  [line-up (-> real? cpict?)]
-  [line-to-tag (-> any/c cpict?)]
-  [save (-> cpict? ... cpict?)]
-  [after (-> cpict? ... cpict?)]
-  [before (-> cpict? cpict? ... cpict?)]
-  [<* (-> cpict? ... cpict?)]
-  [*> (-> cpict? ... cpict?)]
-  [split (-> cpict? cpict? cpict?)]
-  [label (-> string? (or/c 'up 'down 'left 'right) cpict?)]
-  [nothing cpict?]
+  [units (-> positive? diagram?)]
+  [pure (-> pict-convertible? diagram?)]
+  [move-to (-> real? real? diagram?)]
+  [tag-location (-> any/c diagram?)]
+  [move-right (-> real? diagram?)]
+  [move-left (-> real? diagram?)]
+  [move-down (-> real? diagram?)]
+  [move-up (-> real? diagram?)]
+  [move-to-tag (-> any/c diagram?)]
+  [line-to (-> real? real? diagram?)]
+  [line-left (-> real? diagram?)]
+  [line-right (-> real? diagram?)]
+  [line-down (-> real? diagram?)]
+  [line-up (-> real? diagram?)]
+  [line-to-tag (-> any/c diagram?)]
+  [save (-> diagram? ... diagram?)]
+  [after (-> diagram? ... diagram?)]
+  [before (-> diagram? diagram? ... diagram?)]
+  [<* (-> diagram? diagram? ... diagram?)]
+  [*> (-> diagram? diagram? ... diagram?)]
+  [split (-> diagram? diagram? diagram?)]
+  [label (-> string? (or/c 'up 'down 'left 'right) diagram?)]
+  [nothing diagram?]
   [with-state
    (-> (-> real? real? real? real? real? real?
            real? ;; really?
            (hash/c any/c (list/c real? real?))
-           cpict?)
-       cpict?)]
+           diagram?)
+       diagram?)]
   [with-loc (->
-             (-> real? real? cpict?)
-             cpict?)]
+             (-> real? real? diagram?)
+             diagram?)]
   [with-bounds
    (->
-    (-> real? real? real? real? cpict?)
-    cpict?)]
- [start-at (-> cpict? #:ud (or/c 'up 'down) #:lr (or/c 'left 'right)
-               cpict? ...
-               cpict?)]
- [cwhen (-> any/c cpict? ... cpict?)]))
+    (-> real? real? real? real? diagram?)
+    diagram?)]
+ [start-at (-> diagram? #:ud (or/c 'up 'down) #:lr (or/c 'left 'right)
+               diagram? ...
+               diagram?)]
+ [cwhen (-> any/c diagram? ... diagram?)]))
 (require pict racket/draw pict/convert
          "private/shared.rkt"
          racket/match
          racket/class)
 
 (define (tag-location tag)
-  (cpict
+  (diagram
    (lambda (state)
      (values
       void
       (if tag (state-add-tag state tag) state)))))
 
 (define (units u)
-  (cpict
+  (diagram
    (lambda (s)
      (values void (state-set-unit s u)))))
 
 
 (define (line-right x)
-  (cpict
+  (diagram
    (lambda (state)
-     ((line-to (+ (cpict-state-x state) x)
-               (cpict-state-y state))
+     ((line-to (+ (diagram-state-x state) x)
+               (diagram-state-y state))
       state))))
 
 (define (line-down y)
-  (cpict
+  (diagram
    (lambda (state)
-     ((line-to (cpict-state-x state) (+ (cpict-state-y state) y))
+     ((line-to (diagram-state-x state) (+ (diagram-state-y state) y))
       state))))
 (define (line-left x)
   (line-right (- x)))
@@ -80,23 +80,23 @@
   (line-down (- x)))
 
 (define (line-to-tag tag)
-  (cpict
+  (diagram
    (lambda (state)
-     ((apply line-to (hash-ref (cpict-state-coord-tags state) tag))
+     ((apply line-to (hash-ref (diagram-state-coord-tags state) tag))
       state))))
 
 (define (line-to x y)
-  (cpict
+  (diagram
    (lambda (state)
-     (define-values (d s) ((line-to* x (cpict-state-y state)) state))
-     (define-values (d2 s2) ((line-to* (cpict-state-x s) y) s))
+     (define-values (d s) ((line-to* x (diagram-state-y state)) state))
+     (define-values (d2 s2) ((line-to* (diagram-state-x s) y) s))
      (values (lambda (dc) (d dc) (d2 dc))
              s2))))
 
 (define (line-to* x* y*)
-  (cpict
+  (diagram
    (lambda (state)
-     (match-define (cpict-state sx* sy* _ _ _ _ unit _) state)
+     (match-define (diagram-state sx* sy* _ _ _ _ unit _) state)
      (define x (to-coord unit x*))
      (define y (to-coord unit y*))
      (define sx (to-coord unit sx*))
@@ -109,14 +109,14 @@
       (move-state-to state x* y*)))))
 
 (define (move-right x)
-  (cpict
+  (diagram
   (lambda (state)
-    ((move-to (+ x (cpict-state-x state)) (cpict-state-y state))
+    ((move-to (+ x (diagram-state-x state)) (diagram-state-y state))
      state))))
 (define (move-down y)
-  (cpict
+  (diagram
    (lambda (state)
-     ((move-to (cpict-state-x state) (+ y (cpict-state-y state)))
+     ((move-to (diagram-state-x state) (+ y (diagram-state-y state)))
      state))))
 (define (move-left x)
   (move-right (- x)))
@@ -124,13 +124,13 @@
   (move-down (- x)))
 
 (define (move-to-tag tag)
-  (cpict
+  (diagram
    (lambda (state)
-     ((apply move-to (hash-ref (cpict-state-coord-tags state) tag))
+     ((apply move-to (hash-ref (diagram-state-coord-tags state) tag))
       state))))
 
 (define (move-to x y)
-  (cpict
+  (diagram
    (lambda (state)
      (values
       void
@@ -141,13 +141,13 @@
     (if (pict?  maybe-pict)
         (lambda (s) maybe-pict)
         maybe-pict))
-  (cpict
+  (diagram
    (lambda (state)
-     (match-define (cpict-state x y vx vy ^x ^y unit tags) state)
+     (match-define (diagram-state x y vx vy ^x ^y unit tags) state)
      (define pict (p state))
      (values
       (pict-drawer pict state x y)
-      (cpict-state
+      (diagram-state
        x y
        (min vx (- x (/ (pict-width pict) (* unit 2))))
        (min vy (- y (/ (pict-height pict) (* unit 2))))
@@ -157,7 +157,7 @@
        tags)))))
 
 (define (pict-drawer pict s x y)
-  (define u (cpict-state-unit s))
+  (define u (diagram-state-unit s))
   (lambda (dc)
     (draw-pict pict dc
                (- (to-coord u x) (/ (pict-width pict) 2))
@@ -166,10 +166,10 @@
 (define (after . a)
   (match a
     [(list)
-     (cpict (lambda (state) (values void state)))]
+     (diagram (lambda (state) (values void state)))]
     [(cons f a)
      (define r (apply after a))
-     (cpict 
+     (diagram 
       (lambda (state)
         (define-values (draw state1) (f state))
         (define-values (draw2 state2) (r state1))
@@ -178,41 +178,41 @@
          state2)))]))
 
 (define (<* f . a)
-  (cpict 
+  (diagram 
    (lambda (state)
      (define-values (draw state1) (f state))
      (define-values (draw2 state2)
        ((apply after a)
         (state-set-unit
-         (move-state-to state1 (cpict-state-x state) (cpict-state-y state))
-         (cpict-state-unit state))))
+         (move-state-to state1 (diagram-state-x state) (diagram-state-y state))
+         (diagram-state-unit state))))
      (values
       (lambda (dc) (draw dc) (draw2 dc))
       (move-state-to
        state2
-       (cpict-state-x state1)
-       (cpict-state-y state1))))))
+       (diagram-state-x state1)
+       (diagram-state-y state1))))))
 
 (define (*> f . a)
-  (cpict 
+  (diagram 
    (lambda (state)
      (define-values (draw state1) (f state))
      (define-values (draw2 state2)
        ((apply after a)
         (state-set-unit
-         (move-state-to state1 (cpict-state-x state) (cpict-state-y state))
-         (cpict-state-unit state))))
+         (move-state-to state1 (diagram-state-x state) (diagram-state-y state))
+         (diagram-state-unit state))))
      (values
       (lambda (dc) (draw dc) (draw2 dc))
       state2))))
 
 (define nothing
-  (cpict (lambda (state) (values void state))))
+  (diagram (lambda (state) (values void state))))
 
 (define (with-state thunk)
-  (cpict
+  (diagram
    (lambda (s)
-     (match-define (cpict-state x y x0 y0 xm ym unit hash) s)
+     (match-define (diagram-state x y x0 y0 xm ym unit hash) s)
      ((thunk x y x0 y0 xm ym unit hash)
       s))))
 

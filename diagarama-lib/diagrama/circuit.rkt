@@ -1,4 +1,4 @@
-#lang racket/base
+#lang debug racket/base
 (require racket/contract)
 (provide
  (contract-out
@@ -12,7 +12,7 @@
          #:tag-in2 any/c
          #:tag-in3 any/c
          #:tag-out any/c)
-        cpict?)]
+        diagram?)]
   [and-gate
    (->* ()
         (#:in1 any/c
@@ -23,10 +23,14 @@
          #:tag-in2 any/c
          #:tag-in3 any/c
          #:tag-out any/c)
-        cpict?)]
-  [buffer cpict?]))
-(require "private/shared.rkt"
-         (except-in "main.rkt" cpict? to-coord)
+        diagram?)]
+  [buffer (->* ()
+               (#:in2 any/c
+                #:out any/c
+                #:tag-in2 any/c
+                #:tag-out any/c)
+               diagram?)]))
+(require "main.rkt"
          racket/draw
          racket/class
          racket/match
@@ -35,7 +39,7 @@
          pict)
 
 (define (gate-size s)
-  (* (cpict-state-unit s) 3))
+  (* s 3))
 
 (define (interpret-path-commands commands)
   (define p (new dc-path%))
@@ -80,79 +84,47 @@
   (interpret-path-commands
    (parse-path-commands
     "M 0.62119374,0.033722662 C 0.63150617,0.033722662 0.64181861,0.033722662 0.65213104,0.033722662 C 0.65365881,0.033722662 0.65537755,0.033913633 0.65728726,0.034295575 C 0.65919697,0.034677517 0.66110668,0.035441401 0.66299903,0.036587227 C 0.66490874,0.037715692 0.66681845,0.039451792 0.66872816,0.041726083 C 0.67063787,0.044017735 0.67197467,0.04670869 0.67273855,0.049746865 C 0.67350243,0.052802401 0.67350243,0.055857937 0.67273855,0.058913473 C 0.67197467,0.061969009 0.67063787,0.064642603 0.66872816,0.066934255 C 0.66681845,0.069208546 0.66490874,0.070927285 0.66299903,0.072090472 C 0.66110668,0.073218937 0.65919697,0.073982821 0.65728726,0.074364763 C 0.65537755,0.074746705 0.65365881,0.074937676 0.65213104,0.074937676 C 0.65060328,0.074937676 0.64506512,0.074937676 0.63551657,0.074937676 C 0.62596802,0.074937676 0.62119374,0.074937676 0.62119374,0.074937676 C 0.62119374,0.074937676 0.62119374,0.06806272 0.62119374,0.054312808 L 0.62119374,0.033722662 z ")))
+(define buffer-gate-path
+  (let ()
+    (define path (new dc-path%))
+    ;; the actual path
+    (send path move-to 0 1/8)
+    (send path line-to 0 7/8)
+    (send path line-to 1 1/2)
+    (send path close)
+    path))
 
-
-
-(define (or-gate-pict n1 n2 n3 n4)
-  (with-state
-   (match-lambda**
-    [(_ _ _ _ _ _ unit _)
-     (pure
-      (dc
-       (dc
-        (lambda (dc dx dy)
-          (define p or-gate-path)
-          (define-values (l t w h)
-            (send p get-bounding-box))
-          (send p transform
-                (vector 1 0 0 1 (- l) (- t)))
-          (send p transform
-                (vector (* (/ 1 w) (gate-size unit)) 0 0 (* (/ 1 h) (gate-size unit)) 0 0))
-          (send dc draw-path p dx dy)
-          (when n1
-            (send dc draw-path (not-at 2 (to-coord unit 0)) dx dy))
-          (when n2
-            (send dc draw-path (not-at 3 (to-coord unit 1)) dx dy))
-          (when n3
-            (send dc draw-path (not-at 2 (to-coord unit 2)) dx dy))
-          (when n4
-            (send dc draw-path (not-at (gate-size unit) (to-coord unit 1)) dx dy)))
-        (gate-size unit) (gate-size unit))))])))
-
-(define (and-gate-pict n1 n2 n3 n4)
-  (with-state
-   (match-lambda**
-    [(_ _ _ _ _ _ unit _)
-     (pure
-      (dc
-       (lambda (dc dx dy)
-         (define p and-gate-path)
-         (define-values (l t w h)
-           (send p get-bounding-box))
-         (send p transform
-               (vector 1 0 0 1 (- l) (- t)))
-         (send p transform
-               (vector (* (/ 1 w) (gate-size unit)) 0 0 (* (/ 1 h) (gate-size unit)) 0 0))
-         (send dc draw-path p dx dy)
-         (when n1
-           (send dc draw-path (not-at 0 (to-coord unit 0)) dx dy))
-         (when n2
-           (send dc draw-path (not-at 0 (to-coord unit 1)) dx dy))
-         (when n3
-           (send dc draw-path (not-at 0 (to-coord unit 2)) dx dy))
-         (when n4
-           (send dc draw-path (not-at (gate-size unit) (to-coord unit 1)) dx dy)))
-       (gate-size unit) (gate-size unit)))])))
-
-(define buffer
-  (with-state
-   (match-lambda**
-    [(_ _ _ _ _ _ unit _)
-     (pure
-      (dc (λ (dc dx dy)
-            (define path (new dc-path%))
-            (send path move-to 0 (to-coord unit 0))
-            (send path line-to 0 (to-coord unit 2))
-            (send path line-to (to-coord unit 2) (/ (gate-size unit) 2))
-            (send path close)
-            (send dc draw-path path dx dy))
-          (gate-size unit) (gate-size unit)))])))
-
-(define (not-at x y)
-  (define s 5)
-  (define p (new dc-path%))
-  (send p ellipse (- x (/ s 2)) (- y (/ s 2)) s s) 
-  p)
+(define (make-gate-pict-maker p*
+                              nn1 nn2 nn3
+                              #:override-path-width [ow #f]
+                              #:override-path-height [oh #f]
+                              #:override-path-left [ol #f]
+                              #:override-path-top [ot #f])
+  (lambda (n1 n2 n3 n4)
+    (with-state
+     (match-lambda**
+      [(_ _ _ _ _ _ unit _)
+       (pure
+        (dc
+         (lambda (dc dx dy)
+           (define p (new dc-path%))
+           (send p append p*)
+           (define-values (l t w h)
+             (send p get-bounding-box))
+           (send p transform
+                 (vector 1 0 0 1 (- (or ol l)) (- (or ot t))))
+           (send p transform
+                 (vector (* (/ 1 (or ow w)) (gate-size unit)) 0 0 (* (/ 1 (or oh h)) (gate-size unit)) 0 0))
+           (send dc draw-path p dx dy)
+           (when n1
+             (send dc draw-path (not-at nn1 (to-coord unit 0)) dx dy))
+           (when n2
+             (send dc draw-path (not-at nn2 (to-coord unit 1)) dx dy))
+           (when n3
+             (send dc draw-path (not-at nn3 (to-coord unit 2)) dx dy))
+           (when n4
+             (send dc draw-path (not-at (gate-size unit) (to-coord unit 1)) dx dy)))
+         (gate-size unit) (gate-size unit)))]))))
 
 (define (make-gate-combinator gate)
   (lambda (#:in1 [n1 #f]
@@ -181,5 +153,22 @@
              (save (line-right 3)
                    (tag-location tag-n4)))))))
 
-(define and-gate (make-gate-combinator and-gate-pict))
-(define or-gate (make-gate-combinator or-gate-pict))
+(define (not-at x y)
+  (define s 5)
+  (define p (new dc-path%))
+  (send p ellipse (- x (/ s 2)) (- y (/ s 2)) s s) 
+  p)
+
+(define and-gate
+  (make-gate-combinator
+   (make-gate-pict-maker and-gate-path 0 0 0)))
+(define or-gate
+  (make-gate-combinator
+   (make-gate-pict-maker or-gate-path 2 3 2)))
+(define buffer
+  (make-gate-combinator
+   (make-gate-pict-maker buffer-gate-path 0 0 0
+                   #:override-path-width 1
+                   #:override-path-height 1
+                   #:override-path-left 0
+                   #:override-path-top 0)))
