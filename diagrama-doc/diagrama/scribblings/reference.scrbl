@@ -293,6 +293,19 @@
  
 }
 
+@deftogether[(@defform[(for/after (for-clauses ...) body-or-break ... body)]
+               @defform[(for*/after (for-clauses ...) body-or-break ... body)]
+               @defform[(for/*> (for-clauses ...) body-or-break ... body)]
+               @defform[(for*/*> (for-clauses ...) body-or-break ... body)]
+               @defform[(for/<* (for-clauses ...) body-or-break ... body)]
+               @defform[(for*/<* (for-clauses ...) body-or-break ... body)])]{
+
+ Your friendly neighborhood @racket[for] forms, for building
+ diagrams using @racket[after], @racket[*>], and @racket[<*].
+
+}
+               
+
 @section{Reflecting on the drawing state}
 
 There are several ways to directly inspect the current

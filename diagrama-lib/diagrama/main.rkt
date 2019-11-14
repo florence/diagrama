@@ -1,6 +1,9 @@
 #lang debug racket/base
 (require racket/contract)
 (provide
+ for/after for*/after
+ for/*> for*/*>
+ for/<* for*/<*
  (contract-out
   [diagram? predicate/c]
   [to-coord (-> positive? real? real?)]
@@ -68,7 +71,8 @@
          racket/match
          racket/class
          racket/list
-         racket/math)
+         racket/math
+         (for-syntax racket/base syntax/parse))
 
 (define (tag-location tag [x #f] [y #f])
   (after
@@ -381,13 +385,56 @@
      (define h (add1 (- ym y0)))
      (save/bounds
       (color (make-object color% 128 128 128 .5))
-      (for*/fold ([p nothing])
-                 ([x (in-range (add1 w))])
-        (after p
-               (move-to (- (+ x x0) 1/2) (- y0 1/2))
+      (for*/after ([x (in-range (add1 w))])
+        (after (move-to (- (+ x x0) 1/2) (- y0 1/2))
                (line-down h)))
-      (for*/fold ([p nothing])
-                 ([y (in-range (add1 h))])
-        (after p
-               (move-to (- x0 1/2) (- (+ y y0) 1/2))
+      (for*/after ([y (in-range (add1 h))])
+        (after (move-to (- x0 1/2) (- (+ y y0) 1/2))
                (line-right w)))))))
+
+
+;                                                                                            
+;                                                                                            
+;                                                                                            
+;    ;;;;;;;                                 ;;                                              
+;    ;;                                      ;;                                              
+;    ;;                                      ;;                                              
+;    ;;         ;;;;     ;;  ;;              ;;         ;;;;      ;;;;     ; ;;;      ;;;;   
+;    ;;        ;;  ;;     ; ; ;              ;;        ;;  ;;    ;;  ;;    ;;  ;;    ;    ;  
+;    ;;       ;;    ;     ;;  ;              ;;       ;;    ;   ;;    ;    ;    ;    ;       
+;    ;;;;;;   ;;    ;     ;;                 ;;       ;;    ;   ;;    ;    ;    ;    ;;      
+;    ;;       ;;    ;     ;                  ;;       ;;    ;   ;;    ;    ;    ;     ;;;;   
+;    ;;       ;;    ;     ;                  ;;       ;;    ;   ;;    ;    ;    ;        ;;  
+;    ;;       ;;    ;     ;                  ;;       ;;    ;   ;;    ;    ;    ;         ;  
+;    ;;        ;;  ;;     ;                  ;;        ;;  ;;    ;;  ;;    ;;  ;;   ;;   ;;  
+;    ;;         ;;;;     ;;;;                ;;;;;;;    ;;;;      ;;;;     ;;;;;     ;;;;;   
+;                                                                          ;                 
+;                                                                          ;                 
+;                                                                          ;                 
+;                                                                                            
+;                                                                                            
+
+
+(define-for-syntax (make-for-folder func folder)
+  (with-syntax ([f func] [fold folder])
+    (syntax-parser
+      [(_ clauses body ... final)
+       #`(fold #,this-syntax
+               ([p nothing])
+               clauses
+               body ...
+               (f p final))])))
+(define-for-syntax (make-for-folders func)
+  (values (make-for-folder func #'for/fold/derived)
+          (make-for-folder func #'for*/fold/derived)))
+
+(define-syntaxes (for/after for*/after)
+  (make-for-folders #'after))
+
+(define-syntaxes (for/*> for*/*>)
+  (make-for-folders #'*>))
+
+(define-syntaxes (for/<* for*/<*)
+  (make-for-folders #'<*))
+          
+  
