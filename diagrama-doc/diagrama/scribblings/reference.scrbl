@@ -27,9 +27,15 @@
  An empty diagram.
 }
 
-@defproc[(img [p pict-convertible?]) diagram?]{
- Convert this @racket[p] into a diagram which just draws @racket[p]
- centered at the current location.
+@defproc[(img [p pict-convertible?]
+              [align (or/c 'lt 'ct 'rt 'lc 'cc 'rc 'lb 'cb 'rb) 'cc])
+         diagram?]{
+                   
+ Convert this @racket[p] into a diagram which just draws @racket[p].
+ The part of @racket[p] designated by @racket[align] controls
+ which part of @racket[p] is placed at the current location. For
+ example @racket['cc] centers it.
+ 
 }
 
 @defproc[(path [path (is-a?/c dc-path%)]) diagram?]{

@@ -11,7 +11,10 @@
   [color (-> (or/c string? (is-a?/c color%))
              diagram?)]
   [line-width (-> (real-in 0 255) diagram?)]
-  [img (-> pict-convertible? diagram?)]
+  [img
+   (->* (pict-convertible?)
+        ((or/c 'lt 'ct 'rt 'lc 'cc 'rc 'lb 'cb 'rb))
+        diagram?)]
   [path (-> (is-a?/c dc-path%) diagram?)]
   [move-to (-> real? real? diagram?)]
   [tag-location
@@ -217,18 +220,38 @@
       void
       (move-state-to state x y)))))
 
-(define (img pict)
+(define (img pict [align 'cc])
+  (define-values (horz vert)
+    (let ([v (symbol->string align)])
+      (values
+       (string->symbol (string (string-ref v 0)))
+       (string->symbol (string (string-ref v 1))))))
+  (define w (pict-width pict))
+  (define h (pict-height pict))
+  
   (diagram
    (lambda (state)
      (match-define (diagram-state x y vx vy ^x ^y unit lw c tags) state)
+     (define x*
+       (- x
+          (case horz
+            [(l) 0]
+            [(c) (/ w (* unit 2))]
+            [(r) (/ w unit)])))
+     (define y*
+       (- y
+          (case vert
+            [(t) 0]
+            [(c) (/ h (* unit 2))]
+            [(b) (/ h unit)])))
      (values
-      (pict-drawer pict state x y)
+      (pict-drawer pict state x* y*)
       (diagram-state
        x y
-       (min vx (exact-round (- x (/ (pict-width pict) (* unit 2)))))
-       (min vy (exact-round (- y (/ (pict-height pict) (* unit 2)))))
-       (max ^x (exact-round (+ x (/ (pict-width pict) (* unit 2)))))
-       (max ^y (exact-round (+ y (/ (pict-height pict) (* unit 2)))))
+       (min vx (exact-round x*))
+       (min vy (exact-round y*))
+       (max ^x (exact-round (+ x* (/ w unit))))
+       (max ^y (exact-round (+ y* (/ h unit))))
        unit lw c
        tags)))))
         
@@ -237,8 +260,8 @@
   (define u (diagram-state-unit s))
   (lambda (dc)
     (draw-pict pict dc
-               (- (to-coord u x) (/ (pict-width pict) 2))
-               (- (to-coord u y) (/ (pict-height pict) 2)))))
+               (to-coord u x)
+               (to-coord u y))))
 
 (define (after . a)
   (match a
