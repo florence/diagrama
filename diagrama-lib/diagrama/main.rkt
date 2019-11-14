@@ -11,7 +11,8 @@
   [color (-> (or/c string? (is-a?/c color%))
              diagram?)]
   [line-width (-> (real-in 0 255) diagram?)]
-  [pure (-> pict-convertible? diagram?)]
+  [img (-> pict-convertible? diagram?)]
+  [path (-> (is-a?/c dc-path%) diagram?)]
   [move-to (-> real? real? diagram?)]
   [tag-location
    (->i ([_ any/c])
@@ -82,7 +83,6 @@
       (values
        void
        (if tag (state-add-tag state tag) state))))))
-  
 
 (define (units u)
   (diagram
@@ -124,9 +124,9 @@
 
 (define (line-to x y #:h-first [h-first #t])
   (define (h s)
-    ((line-to* x (diagram-state-y s)) s))
+    ((line-to* (- x (diagram-state-x s)) 0) s))
   (define (v s)
-    ((line-to* (diagram-state-x s) y) s))
+    ((line-to* 0 (- y (diagram-state-y s))) s))
   (diagram
    (lambda (state)
      (define-values (d s) ((if h-first h v) state))
@@ -134,26 +134,60 @@
      (values (lambda (dc) (d dc) (d2 dc))
              s2))))
 
-(define (line-to* x* y*)
+(define (line-to* x y)
+  (define p (new dc-path%))
+  (send p move-to 0 0)
+  (send p line-to x y)
+  (send p close)
+  (path p))
+
+(define (path p*)
+  (define p (new dc-path%))
+  (send p append p*)
+  (send p close)
+  (define-values (ps _) (send p get-datum))
+  (define-values (x y)
+    (match (filter (lambda (x) (not (empty? x))) ps)
+      [(list) (values 0 0)]
+      [(list _ ... (list _ ... (vector _ ... x y)))
+       (values x y)]))
+  (define-values (x0 y0 w h) (send p get-bounding-box))
+  (define xm (+ w x0))
+  (define ym (+ h y0))
   (diagram
-   (lambda (state)
-     (match-define
-       (struct* diagram-state
-                ([x sx*] [y sy*] [unit unit] [color c] [line-width lw]))
-       state)
-     (define x (to-coord unit x*))
-     (define y (to-coord unit y*))
-     (define sx (to-coord unit sx*))
-     (define sy (to-coord unit sy*))
-     (values 
-      (lambda (dc)
-        (define p (send dc get-pen))
-        (send dc set-pen c lw 'solid)
-        (send dc draw-line
-              sx sy
-              x y)
-        (send dc set-pen p))
-      (move-state-to state x* y*)))))
+   (lambda (s)
+     (match-define (diagram-state x1 y1 vx vy ^x ^y unit lw c tags) s)
+     (values
+      (draw-path-with-drawing-state p s)
+      (diagram-state
+       (+ x x1) (+ y y1)
+       (min vx (+ x0 x1))
+       (min vy (+ y0 y1))
+       (max ^x (+ xm x1))
+       (max ^y (+ ym y1))
+       unit lw c
+       tags)))))
+
+(define (draw-path-with-drawing-state p state)
+  (lambda (dc)
+    (define p2 (new dc-path%))
+    (send p2 append p)
+    (send p2 close)
+    (match-define
+      (struct* diagram-state
+               ([x sx] [y sy] [unit unit] [color c] [line-width lw]))
+      state)
+    (define pen (send dc get-pen))
+    (define m (send dc get-transformation))
+    (send dc set-pen c lw 'solid)
+    (send p2 transform
+          (vector unit 0
+                  0 unit
+                  (to-coord unit sx) (to-coord unit sy)))
+    (send dc draw-path p2 0 0)
+    (send dc set-pen pen)
+    (send dc set-transformation m)))
+      
 
 (define (move-right x)
   (diagram
@@ -183,7 +217,7 @@
       void
       (move-state-to state x y)))))
 
-(define (pure pict)
+(define (img pict)
   (diagram
    (lambda (state)
      (match-define (diagram-state x y vx vy ^x ^y unit lw c tags) state)
@@ -197,6 +231,7 @@
        (max ^y (exact-round (+ y (/ (pict-height pict) (* unit 2)))))
        unit lw c
        tags)))))
+        
 
 (define (pict-drawer pict s x y)
   (define u (diagram-state-unit s))
@@ -269,6 +304,7 @@
      (values d
              (diagram-state x y x0 y0 xm ym unit lw c
                             (diagram-state-coord-tags s2))))))
+
       
 
 ;                                                                        
@@ -292,6 +328,7 @@
 ;                                                                        
 ;                                                                        
 ;
+
 
 (define (save . thunks)
   (*> (apply after thunks) nothing))
@@ -352,7 +389,7 @@
        [(right) move-right]
        [(left) move-left])
      1)
-    (pure (text t)))))
+    (img (text t)))))
 
 (define (cwhen c . p)
   (if c
@@ -360,7 +397,7 @@
       nothing))
 
 (define (dot lw)
-  (pure (disk (* 5 lw))))
+  (img (disk (* 5 lw))))
 
 (define (split thunk1 thunk2)
   (after
@@ -386,7 +423,6 @@
       (for*/after ([y (in-range (add1 h))])
         (after (move-to (- x0 1/2) (- (+ y y0) 1/2))
                (line-right w)))))))
-
 
 ;                                                                                            
 ;                                                                                            

@@ -101,29 +101,22 @@
                               #:override-path-left [ol #f]
                               #:override-path-top [ot #f])
   (lambda (n1 n2 n3 n4)
-    (with-unit
-     (lambda (unit)
-       (pure
-        (dc
-         (lambda (dc dx dy)
-           (define p (new dc-path%))
-           (send p append p*)
-           (define-values (l t w h)
-             (send p get-bounding-box))
-           (send p transform
-                 (vector 1 0 0 1 (- (or ol l)) (- (or ot t))))
-           (send p transform
-                 (vector (* (/ 1 (or ow w)) (gate-size unit)) 0 0 (* (/ 1 (or oh h)) (gate-size unit)) 0 0))
-           (send dc draw-path p dx dy)
-           (when n1
-             (send dc draw-path (not-at nn1 (to-coord unit 0)) dx dy))
-           (when n2
-             (send dc draw-path (not-at nn2 (to-coord unit 1)) dx dy))
-           (when n3
-             (send dc draw-path (not-at nn3 (to-coord unit 2)) dx dy))
-           (when n4
-             (send dc draw-path (not-at (gate-size unit) (to-coord unit 1)) dx dy)))
-         (gate-size unit) (gate-size unit)))))))
+    (define p (new dc-path%))
+    (send p append p*)
+    (define-values (l t w h)
+      (send p get-bounding-box))
+    (send p transform
+          (vector 1 0 0 1 (- (or ol l)) (- (or ot t))))
+    (send p transform
+          (vector (* (/ 1 (or ow w)) (gate-size 1)) 0
+                  0 (* (/ 1 (or oh h)) (gate-size 1))
+                  (- (gate-size .5)) (- (gate-size .5))))
+    (after
+     (save (path p))
+     (save (if n1 (path (not-at nn1 1/6)) nothing))
+     (save (if n2 (path (not-at nn2 0.5)) nothing))
+     (save (if n3 (path (not-at nn3 5/6)) nothing))
+     (save (if n4 (path (not-at 1 .5)) nothing)))))
 
 (define (make-gate-combinator gate)
   (lambda (#:in1 [n1 #f]
@@ -157,9 +150,13 @@
           nothing)))))
 
 (define (not-at x y)
-  (define s 5)
+  (define s (gate-size .15))
   (define p (new dc-path%))
-  (send p ellipse (- x (/ s 2)) (- y (/ s 2)) s s) 
+  (send p ellipse
+        (- (gate-size (- x 1/2)) (/ s 2))
+        (- (gate-size (- y 1/2)) (/ s 2))
+        
+        s s)
   p)
 
 (define and-gate
@@ -167,7 +164,7 @@
    (make-gate-pict-maker and-gate-path 0 0 0)))
 (define or-gate
   (make-gate-combinator
-   (make-gate-pict-maker or-gate-path 2 3 2)))
+   (make-gate-pict-maker or-gate-path 1/24 1/12 1/24)))
 (define buffer
   (make-gate-combinator
    (make-gate-pict-maker buffer-gate-path 0 0 0

@@ -8,12 +8,10 @@
 @defproc[(diagram? [it any/c])
          boolean?]{
 
- Is @racket[it] a Diagram. Diagrams are computations that draw,
- well, diagrams. Diagrams have a state which consists of a
- current drawing location and a notion of units, which is
- uses to convert from that location to distance into the
- resulting @racket[pict?]. The computation may result in a
- new state.
+ Is @racket[it] a Diagram. Diagrams are computations that
+ draw, well, diagrams. Diagrams have a state which consists
+ of a current drawing location, a notion of units, a
+ line-width, and line-color.
  
  Diagrams are @racket[pict-convertible?]. When diagrams are
  drawn the whole image is shifted such that the minimum x and
@@ -29,11 +27,31 @@
  An empty diagram.
 }
 
-@defproc[(pure [p pict-convertible?]) diagram?]{
+@defproc[(img [p pict-convertible?]) diagram?]{
  Convert this @racket[p] into a diagram which just draws @racket[p]
  centered at the current location.
 }
 
+@defproc[(path [path (is-a?/c dc-path%)]) diagram?]{
+                                                                                           
+ Draw the given path. The path is interpreted in terms
+ of the current location and units, and the current location
+ after drawing the path is the location of the last
+ point in the paths. The path is not mutated.
+ 
+ @examples[#:eval diag
+           (define unit-line-right
+             (let ()
+               (define p (new dc-path%))
+               (send p move-to 0 0)
+               (send p line-to 1 0)
+               (path p)))
+           unit-line-right
+           (after (move-to 3 0) unit-line-right)
+           (after (units 36) (move-to 3 0) unit-line-right)
+           (after (units 36) (move-to 3 0) (color "red") unit-line-right)]
+ 
+}
 
 @defproc[(line-to [x real?] [y real?] [#:h-first h-fit any/c #t])
          diagram?]{
@@ -213,9 +231,9 @@
  draw @racket[d1] at with initial state of the diagram.
 
  @examples[#:eval diag
-           (after (pure (disk 36 #:color "white"))
+           (after (img (disk 36 #:color "white"))
                   (line-right 3))
-           (before (pure (disk 36 #:color "white"))
+           (before (img (disk 36 #:color "white"))
                    (line-right 3))]
  
 }
@@ -354,7 +372,7 @@ with these).
 
  @examples[#:eval diag
            (define unit-circle
-             (with-unit (compose pure circle)))
+             (with-unit (compose img circle)))
            unit-circle
            (after (units 24) unit-circle)
            (scale
