@@ -183,11 +183,10 @@
       void
       (move-state-to state x y)))))
 
-(define (pure p)
+(define (pure pict)
   (diagram
    (lambda (state)
      (match-define (diagram-state x y vx vy ^x ^y unit lw c tags) state)
-     (define pict (p state))
      (values
       (pict-drawer pict state x y)
       (diagram-state
