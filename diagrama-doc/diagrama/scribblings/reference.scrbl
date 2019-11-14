@@ -3,6 +3,8 @@
 @(require "base.rkt")
 @defmodule[diagrama #:use-sources (diagrama)]
 
+@bold{Warning:} The API presented here is unstable, and may change without warning.
+
 @defproc[(diagram? [it any/c])
          boolean?]{
 
