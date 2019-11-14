@@ -183,11 +183,7 @@
       void
       (move-state-to state x y)))))
 
-(define (pure maybe-pict)
-  (define p
-    (if (pict?  maybe-pict)
-        (lambda (s) maybe-pict)
-        maybe-pict))
+(define (pure p)
   (diagram
    (lambda (state)
      (match-define (diagram-state x y vx vy ^x ^y unit lw c tags) state)

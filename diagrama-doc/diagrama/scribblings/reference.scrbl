@@ -355,15 +355,17 @@ with these).
              (with-unit (compose pure circle)))
            unit-circle
            (after (units 24) unit-circle)
-           (after
-            (units 24)
-            (for*/fold ([p nothing])
-                       ([x (in-range 3)]
-                        [y (in-range 3)])
-              (after p
-                     (move-to x y)
-                     unit-circle))
-            unit-grid)]
+           (scale
+            (after
+             (units 24)
+             (for*/fold ([p nothing])
+                        ([x (in-range 3)]
+                         [y (in-range 3)])
+               (after p
+                      (move-to x y)
+                      unit-circle))
+             unit-grid)
+            2)]
             
 
 }
