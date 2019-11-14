@@ -38,12 +38,17 @@
  
 }
 
-@defproc[(path [path (is-a?/c dc-path%)]) diagram?]{
+@defproc[(path [path (is-a?/c dc-path%)]
+               [fill-style (or/c 'odd-even 'winding) 'odd-even])
+         diagram?]{
                                                                                            
  Draw the given path. The path is interpreted in terms
  of the current location and units, and the current location
  after drawing the path is the location of the last
  point in the paths. The path is not mutated.
+
+ The @racket[fill-style] is the same as the same argument
+ from @method[dc<%> draw-path].
  
  @examples[#:eval diag
            (define unit-line-right
@@ -430,17 +435,26 @@ with this.
                          [#:out out any/c #f]
                          [#:tag-in2 tag2 any/c #f]
                          [#:tag-out tag4 any/c #f])
+                        diagram?]
+               @defproc[(register
+                         [#:n2 n2 any/c #f]
+                         [#:out out any/c #f]
+                         [#:tag-in2 tag2 any/c #f]
+                         [#:tag-out tag4 any/c #f])
                         diagram?])]{
 
  Make a diagram that draws the given gate, each gate facing
- to the right. @racket[or-gate] and @racket[and-gate]
- are three units square, and designed to take in up to three input wires.
- @racket[buffer] is roughly the same size, but is designed to take only one
- input. If @racket[n1], @racket[n2], or @racket[n3] are not @racket[#f],
- then the upper, middle, or lower input (respectively) are negated.
- @racket[out] does the same for the output. If @racket[tag1], @racket[tag2]
- or @racket[tag3] a wire is drawn for those inputs, and its endpoint
- is named by the given tag. @racket[tag4] does the same for the output.
+ to the right. @racket[or-gate] and @racket[and-gate] are
+ three units square, and designed to take in up to three
+ input wires. @racket[buffer] and @racket[register] are
+ roughly the same size, but are designed to take only one
+ input. If @racket[n1], @racket[n2], or @racket[n3] are not
+ @racket[#f], then the upper, middle, or lower input
+ (respectively) are negated. @racket[out] does the same for
+ the output. If @racket[tag1], @racket[tag2] or @racket[tag3]
+ a wire is drawn for those inputs, and its endpoint is named
+ by the given tag. @racket[tag4] does the same for the
+ output.
 
  The drawn gate is centered at the current location.
 

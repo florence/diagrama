@@ -15,7 +15,9 @@
    (->* (pict-convertible?)
         ((or/c 'lt 'ct 'rt 'lc 'cc 'rc 'lb 'cb 'rb))
         diagram?)]
-  [path (-> (is-a?/c dc-path%) diagram?)]
+  [path (->* ((is-a?/c dc-path%))
+             ((or/c 'odd-even 'winding))
+             diagram?)]
   [move-to (-> real? real? diagram?)]
   [tag-location
    (->i ([_ any/c])
@@ -144,7 +146,7 @@
   (send p close)
   (path p))
 
-(define (path p*)
+(define (path p* [fill-mode 'odd-even])
   (define p (new dc-path%))
   (send p append p*)
   (send p close)
@@ -161,7 +163,7 @@
    (lambda (s)
      (match-define (diagram-state x1 y1 vx vy ^x ^y unit lw c tags) s)
      (values
-      (draw-path-with-drawing-state p s)
+      (draw-path-with-drawing-state p s fill-mode)
       (diagram-state
        (+ x x1) (+ y y1)
        (min vx (+ x0 x1))
@@ -171,7 +173,7 @@
        unit lw c
        tags)))))
 
-(define (draw-path-with-drawing-state p state)
+(define (draw-path-with-drawing-state p state fill-mode)
   (lambda (dc)
     (define p2 (new dc-path%))
     (send p2 append p)
@@ -187,7 +189,7 @@
           (vector unit 0
                   0 unit
                   (to-coord unit sx) (to-coord unit sy)))
-    (send dc draw-path p2 0 0)
+    (send dc draw-path p2 0 0 fill-mode)
     (send dc set-pen pen)
     (send dc set-transformation m)))
       
