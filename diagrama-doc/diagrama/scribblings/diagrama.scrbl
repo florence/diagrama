@@ -8,9 +8,6 @@
 
 Digrama is a library for drawing diagrams on top of @racketmodname[pict]. 
 
-@table-of-contents[]
-
-@include-section["guide.scrbl"]
 @include-section["reference.scrbl"]
 
 @index-section[]
