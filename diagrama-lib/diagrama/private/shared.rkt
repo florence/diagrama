@@ -10,17 +10,20 @@
  state-add-tag
  state-get-tag
  state-set-unit)
-(require pict/convert pict racket/match racket/draw racket/class)
+(require pict/convert pict racket/match racket/draw racket/class
+         file/convertible)
 
 (struct diagram (f)
   #:property prop:procedure (struct-field-index f)
   #:property prop:pict-convertible
-  (lambda (x) (draw-diagram (diagram-f x))))
-
+  (lambda (x) (draw-diagram (diagram-f x)))
+  #:property prop:convertible
+  (lambda (v r d)
+    (convert (pict-convert v) r d)))
 (define (draw-diagram c)
   (define-values (draw state) (c (new-state 0 0)))
   (match-define (diagram-state x y min-x min-y max-x max-y unit _) state)
-  (define margin unit)
+  (define margin (+ 2 unit))
   (define w (- max-x min-x))
   (define h (- max-y min-y))
   (dc
@@ -38,8 +41,6 @@
 
 (define line-width 1)
 (define unit 12)
-
-
 
 (define (to-coord unit m)
   (+ (* m unit) (/ unit 2)))

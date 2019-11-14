@@ -1,4 +1,4 @@
-#lang racket/base
+#lang debug racket/base
 (require racket/contract)
 (provide
  (contract-out
@@ -7,19 +7,31 @@
   [units (-> positive? diagram?)]
   [pure (-> pict-convertible? diagram?)]
   [move-to (-> real? real? diagram?)]
-  [tag-location (-> any/c diagram?)]
+  [tag-location
+   (->i ([_ any/c])
+        ([x real?]
+         [y real?])
+        #:pre/name (x y)
+        "May not give only one of X and Y"
+        (equal? (equal? x the-unsupplied-arg) (equal? y the-unsupplied-arg))
+        [_ diagram?])]
   [move-right (-> real? diagram?)]
   [move-left (-> real? diagram?)]
   [move-down (-> real? diagram?)]
   [move-up (-> real? diagram?)]
   [move-to-tag (-> any/c diagram?)]
-  [line-to (-> real? real? diagram?)]
+  [line-to (->* (real? real?)
+                (#:h-first any/c)
+                diagram?)]
   [line-left (-> real? diagram?)]
   [line-right (-> real? diagram?)]
   [line-down (-> real? diagram?)]
   [line-up (-> real? diagram?)]
-  [line-to-tag (-> any/c diagram?)]
+  [line-to-tag (->* (any/c)
+                    (#:h-first any/c)
+                    diagram?)]
   [save (-> diagram? ... diagram?)]
+  [save/bounds (-> diagram? ... diagram?)]
   [after (-> diagram? ... diagram?)]
   [before (-> diagram? diagram? ... diagram?)]
   [<* (-> diagram? diagram? ... diagram?)]
@@ -29,7 +41,7 @@
   [nothing diagram?]
   [with-state
    (-> (-> real? real? real? real? real? real?
-           real? ;; really?
+           real? ;; real-ly?
            (hash/c any/c (list/c real? real?))
            diagram?)
        diagram?)]
@@ -40,21 +52,30 @@
    (->
     (-> real? real? real? real? diagram?)
     diagram?)]
- [start-at (-> diagram? #:ud (or/c 'up 'down) #:lr (or/c 'left 'right)
+  [with-unit
+   (-> (-> real? diagram?) diagram?)]
+ [start-at (-> #:ud (or/c 'up 'down) #:lr (or/c 'left 'right)
                diagram? ...
                diagram?)]
- [cwhen (-> any/c diagram? ... diagram?)]))
+ [line-between
+  (-> any/c any/c diagram?)]
+ [unit-grid diagram?]))
 (require pict racket/draw pict/convert
          "private/shared.rkt"
          racket/match
-         racket/class)
+         racket/class
+         racket/list
+         racket/math)
 
-(define (tag-location tag)
-  (diagram
-   (lambda (state)
-     (values
-      void
-      (if tag (state-add-tag state tag) state)))))
+(define (tag-location tag [x #f] [y #f])
+  (after
+   (if x (move-to x y) nothing)
+   (diagram
+    (lambda (state)
+      (values
+       void
+       (if tag (state-add-tag state tag) state))))))
+  
 
 (define (units u)
   (diagram
@@ -79,17 +100,21 @@
 (define (line-up x)
   (line-down (- x)))
 
-(define (line-to-tag tag)
+(define (line-to-tag tag #:h-first [h #t])
   (diagram
    (lambda (state)
-     ((apply line-to (hash-ref (diagram-state-coord-tags state) tag))
+     ((apply line-to #:h-first h (hash-ref (diagram-state-coord-tags state) tag))
       state))))
 
-(define (line-to x y)
+(define (line-to x y #:h-first [h-first #t])
+  (define (h s)
+    ((line-to* x (diagram-state-y s)) s))
+  (define (v s)
+    ((line-to* (diagram-state-x s) y) s))
   (diagram
    (lambda (state)
-     (define-values (d s) ((line-to* x (diagram-state-y state)) state))
-     (define-values (d2 s2) ((line-to* (diagram-state-x s) y) s))
+     (define-values (d s) ((if h-first h v) state))
+     (define-values (d2 s2) ((if h-first v h) s))
      (values (lambda (dc) (d dc) (d2 dc))
              s2))))
 
@@ -149,10 +174,10 @@
       (pict-drawer pict state x y)
       (diagram-state
        x y
-       (min vx (- x (/ (pict-width pict) (* unit 2))))
-       (min vy (- y (/ (pict-height pict) (* unit 2))))
-       (max ^x (+ x (/ (pict-width pict) (* unit 2))))
-       (max ^y (+ y (/ (pict-height pict) (* unit 2))))
+       (min vx (exact-round (- x (/ (pict-width pict) (* unit 2)))))
+       (min vy (exact-round (- y (/ (pict-height pict) (* unit 2)))))
+       (max ^x (exact-round (+ x (/ (pict-width pict) (* unit 2)))))
+       (max ^y (exact-round (+ y (/ (pict-height pict) (* unit 2)))))
        unit
        tags)))))
 
@@ -178,33 +203,37 @@
          state2)))]))
 
 (define (<* f . a)
-  (diagram 
-   (lambda (state)
-     (define-values (draw state1) (f state))
-     (define-values (draw2 state2)
-       ((apply after a)
-        (state-set-unit
-         (move-state-to state1 (diagram-state-x state) (diagram-state-y state))
-         (diagram-state-unit state))))
-     (values
-      (lambda (dc) (draw dc) (draw2 dc))
-      (move-state-to
-       state2
-       (diagram-state-x state1)
-       (diagram-state-y state1))))))
+  (if (empty? a)
+      f
+      (diagram 
+       (lambda (state)
+         (define-values (draw state1) (f state))
+         (define-values (draw2 state2)
+           ((apply <* a)
+            (state-set-unit
+             (move-state-to state1 (diagram-state-x state) (diagram-state-y state))
+             (diagram-state-unit state))))
+         (values
+          (lambda (dc) (draw dc) (draw2 dc))
+          (move-state-to
+           state2
+           (diagram-state-x state1)
+           (diagram-state-y state1)))))))
 
 (define (*> f . a)
-  (diagram 
-   (lambda (state)
-     (define-values (draw state1) (f state))
-     (define-values (draw2 state2)
-       ((apply after a)
-        (state-set-unit
-         (move-state-to state1 (diagram-state-x state) (diagram-state-y state))
-         (diagram-state-unit state))))
-     (values
-      (lambda (dc) (draw dc) (draw2 dc))
-      state2))))
+  (if (empty? a)
+      f
+      (diagram 
+       (lambda (state)
+         (define-values (draw state1) (f state))
+         (define-values (draw2 state2)
+           ((apply *> a)
+            (state-set-unit
+             (move-state-to state1 (diagram-state-x state) (diagram-state-y state))
+             (diagram-state-unit state))))
+         (values
+          (lambda (dc) (draw dc) (draw2 dc))
+          state2)))))
 
 (define nothing
   (diagram (lambda (state) (values void state))))
@@ -215,6 +244,17 @@
      (match-define (diagram-state x y x0 y0 xm ym unit hash) s)
      ((thunk x y x0 y0 xm ym unit hash)
       s))))
+
+(define (save/bounds . thunks)
+  (define f (apply after thunks))
+  (diagram
+   (lambda (s)
+     (define-values (d s2) (f s))
+     (match-define (diagram-state x y x0 y0 xm ym unit hash) s)
+     (values d
+             (diagram-state x y x0 y0 xm ym unit
+                            (diagram-state-coord-tags s2))))))
+      
 
 ;                                                                        
 ;                                                                        
@@ -249,6 +289,10 @@
   (with-state
    (lambda (x y x0 y0 xm ym unit hash)
      (thunk x0 y0 xm ym))))
+(define (with-unit thunk)
+  (with-state
+   (lambda (x y x0 y0 xm ym unit hash)
+     (thunk unit))))
 
 (define (start-at #:ud ud #:lr lr . b)
   (for/fold ([p nothing])
@@ -294,3 +338,25 @@
    (pure dot)
    (save thunk1)
    thunk2))
+
+(define (line-between a b #:h-first [h-fit #t])
+  (save
+   (move-to-tag a)
+   (line-to-tag b #:h-first h-fit)))
+
+(define unit-grid
+  (with-bounds
+   (lambda (x0 y0 xm ym)
+     (define w (add1 (- xm x0)))
+     (define h (add1 (- ym y0)))
+     (save/bounds
+      (for*/fold ([p nothing])
+                 ([x (in-range (add1 w))])
+        (after p
+               (move-to (- (+ x x0) 1/2) (- y0 1/2))
+               (line-down h)))
+      (for*/fold ([p nothing])
+                 ([y (in-range (add1 h))])
+        (after p
+               (move-to (- x0 1/2) (- (+ y y0) 1/2))
+               (line-right w)))))))

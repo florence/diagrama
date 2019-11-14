@@ -1,4 +1,4 @@
-#lang debug racket/base
+#lang racket/base
 (require racket/contract)
 (provide
  (contract-out
@@ -138,20 +138,24 @@
     (save
      (before
       (gate n1 n2 n3 n4)
-      (cwhen tag-n1
-             (save (move-up 1)
-                   (line-left 3)
-                   (tag-location tag-n1)))
-      (cwhen tag-n2
-             (save (line-left 3)
-                   (tag-location tag-n2)))
-      (cwhen tag-n3
-             (save (move-down 1)
-                   (line-left 3)
-                   (tag-location tag-n3)))
-      (cwhen tag-n4
-             (save (line-right 3)
-                   (tag-location tag-n4)))))))
+      (if tag-n1
+          (save (move-up 1)
+                (line-left 3)
+                (tag-location tag-n1))
+          nothing)
+      (if tag-n2
+          (save (line-left 3)
+                (tag-location tag-n2))
+          nothing)
+      (if tag-n3
+          (save (move-down 1)
+                (line-left 3)
+                (tag-location tag-n3))
+          nothing)
+      (if tag-n4
+          (save (line-right 3)
+                (tag-location tag-n4))
+          nothing)))))
 
 (define (not-at x y)
   (define s 5)
