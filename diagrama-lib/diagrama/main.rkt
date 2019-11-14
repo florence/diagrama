@@ -5,6 +5,9 @@
   [diagram? predicate/c]
   [to-coord (-> positive? real? real?)]
   [units (-> positive? diagram?)]
+  [color (-> (or/c string? (is-a?/c color%))
+             diagram?)]
+  [line-width (-> (real-in 0 255) diagram?)]
   [pure (-> pict-convertible? diagram?)]
   [move-to (-> real? real? diagram?)]
   [tag-location
@@ -39,12 +42,7 @@
   [split (-> diagram? diagram? diagram?)]
   [label (-> string? (or/c 'up 'down 'left 'right) diagram?)]
   [nothing diagram?]
-  [with-state
-   (-> (-> real? real? real? real? real? real?
-           real? ;; real-ly?
-           (hash/c any/c (list/c real? real?))
-           diagram?)
-       diagram?)]
+ 
   [with-loc (->
              (-> real? real? diagram?)
              diagram?)]
@@ -54,6 +52,11 @@
     diagram?)]
   [with-unit
    (-> (-> real? diagram?) diagram?)]
+  [with-line-width
+   (-> (-> (real-in 0 255) diagram?) diagram?)]
+  [with-color
+   (-> (-> (or/c string? (is-a?/c color%)) diagram?)
+       diagram?)]
  [start-at (-> #:ud (or/c 'up 'down) #:lr (or/c 'left 'right)
                diagram? ...
                diagram?)]
@@ -82,6 +85,15 @@
    (lambda (s)
      (values void (state-set-unit s u)))))
 
+(define (color c)
+  (diagram 
+   (lambda (s)
+     (values void (state-set-color s c)))))
+
+(define (line-width lw)
+  (diagram 
+   (lambda (s)
+     (values void (state-set-line-width s lw)))))
 
 (define (line-right x)
   (diagram
@@ -121,16 +133,22 @@
 (define (line-to* x* y*)
   (diagram
    (lambda (state)
-     (match-define (diagram-state sx* sy* _ _ _ _ unit _) state)
+     (match-define
+       (struct* diagram-state
+                ([x sx*] [y sy*] [unit unit] [color c] [line-width lw]))
+       state)
      (define x (to-coord unit x*))
      (define y (to-coord unit y*))
      (define sx (to-coord unit sx*))
      (define sy (to-coord unit sy*))
      (values 
       (lambda (dc)
+        (define p (send dc get-pen))
+        (send dc set-pen c lw 'solid)
         (send dc draw-line
               sx sy
-              x y))
+              x y)
+        (send dc set-pen p))
       (move-state-to state x* y*)))))
 
 (define (move-right x)
@@ -168,7 +186,7 @@
         maybe-pict))
   (diagram
    (lambda (state)
-     (match-define (diagram-state x y vx vy ^x ^y unit tags) state)
+     (match-define (diagram-state x y vx vy ^x ^y unit lw c tags) state)
      (define pict (p state))
      (values
       (pict-drawer pict state x y)
@@ -178,7 +196,7 @@
        (min vy (exact-round (- y (/ (pict-height pict) (* unit 2)))))
        (max ^x (exact-round (+ x (/ (pict-width pict) (* unit 2)))))
        (max ^y (exact-round (+ y (/ (pict-height pict) (* unit 2)))))
-       unit
+       unit lw c
        tags)))))
 
 (define (pict-drawer pict s x y)
@@ -241,18 +259,16 @@
 (define (with-state thunk)
   (diagram
    (lambda (s)
-     (match-define (diagram-state x y x0 y0 xm ym unit hash) s)
-     ((thunk x y x0 y0 xm ym unit hash)
-      s))))
+     ((thunk s) s))))
 
 (define (save/bounds . thunks)
   (define f (apply after thunks))
   (diagram
    (lambda (s)
      (define-values (d s2) (f s))
-     (match-define (diagram-state x y x0 y0 xm ym unit hash) s)
+     (match-define (diagram-state x y x0 y0 xm ym unit lw c hash) s)
      (values d
-             (diagram-state x y x0 y0 xm ym unit
+             (diagram-state x y x0 y0 xm ym unit lw c
                             (diagram-state-coord-tags s2))))))
       
 
@@ -283,16 +299,30 @@
 
 (define (with-loc thunk)
   (with-state
-   (lambda (x y x0 y0 xm ym unit hash)
-     (thunk x y))))
+   (lambda (s)
+     (thunk (diagram-state-x s) (diagram-state-y s)))))
 (define (with-bounds thunk)
   (with-state
-   (lambda (x y x0 y0 xm ym unit hash)
+   (lambda (s)
+     (match-define
+       (struct* diagram-state
+                ([min-x x0] [min-y y0] [max-x xm] [max-y ym]))
+       s)
      (thunk x0 y0 xm ym))))
+
 (define (with-unit thunk)
   (with-state
-   (lambda (x y x0 y0 xm ym unit hash)
-     (thunk unit))))
+   (lambda (s)
+     (thunk (diagram-state-unit s)))))
+
+(define (with-color thunk)
+  (with-state
+   (lambda (s)
+     (thunk (diagram-state-color s)))))
+(define (with-line-width thunk)
+  (with-state
+   (lambda (s)
+     (thunk (diagram-state-line-width s)))))
 
 (define (start-at #:ud ud #:lr lr . b)
   (for/fold ([p nothing])
@@ -330,12 +360,12 @@
       (apply after p)
       nothing))
 
-(define dot
-  (disk (* 5 line-width)))
+(define (dot lw)
+  (pure (disk (* 5 lw))))
 
 (define (split thunk1 thunk2)
   (after
-   (pure dot)
+   (with-line-width dot)
    (save thunk1)
    thunk2))
 
@@ -350,6 +380,7 @@
      (define w (add1 (- xm x0)))
      (define h (add1 (- ym y0)))
      (save/bounds
+      (color (make-object color% 128 128 128 .5))
       (for*/fold ([p nothing])
                  ([x (in-range (add1 w))])
         (after p

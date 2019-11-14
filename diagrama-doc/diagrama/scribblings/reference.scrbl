@@ -11,12 +11,7 @@
  current drawing location and a notion of units, which is
  uses to convert from that location to distance into the
  resulting @racket[pict?]. The computation may result in a
- new state.@margin-note*{Haskellers in the audience may notice
-  that Diagrams basically an instance of the State monad,
-  where the state image being draw and the computation is what
-  is call the "State" here, just to make things confusing.
-  Everyone else will be confused by this comment, so I figured
-  it was fair.}
+ new state.
  
  Diagrams are @racket[pict-convertible?]. When diagrams are
  drawn the whole image is shifted such that the minimum x and
@@ -142,6 +137,24 @@
            (define l (line-right 1))
            l
            (after (units 36) l)]
+ 
+}
+
+@defproc[(color [c (or/c string? (is-a?/c color%))]) diagram?]{
+
+ Create an empty diagram that changes
+ the current line color.
+
+ @examples[#:eval diag
+           (after (units 36) (color "red")
+                  (line-right 2))]
+ 
+}
+
+@defproc[(line-width [l (real-in 0 255)]) diagram?]{
+
+ Create an empty diagram that changes
+ the current line width.
  
 }
 
@@ -289,20 +302,6 @@ making @racket[pict?]'s that scale to the current unit size (for
 example @racket[unit-grid] and @racket[start-at] are defined
 with these).
 
-@defproc[(with-state
-          [builder
-           (-> real? real? real? real? real? real?
-                   real? ;; really?
-                   (hash/c any/c (list/c real? real?))
-                   diagram?)])
-         diagram?]{
- Build a diagram based on the current drawing state. @racket[builder] is given,
- in order, the current x coordinate, the current y coordinate, the minimum x coordinate
- every seen, the minimum x coordinate ever seen, the maximum x coordinate
- every seen, the maximum x coordinate ever seen, the current drawing units,
- and a hash table containing all named locations (see @racket[tag-location]).
-}
-
 @defproc[(with-loc
           [builder (-> real? real? diagram?)])
          diagram?]{
@@ -314,6 +313,22 @@ with these).
          diagram?]{
  Build a diagram given the current bounding box. See @racket[with-state]
  for the order of arguments to @racket[builder].
+}
+
+@defproc[(with-color
+          [builder (-> (or/c string? (is-a?/c color%)) diagram?)])
+         diagram?]{
+
+ Build a diagram using the current color.
+
+}
+
+@defproc[(with-line-width
+          [builder (-> (real-in 0 255) diagram?)])
+         diagram?]{
+
+ Build a diagram using the current line width.
+
 }
 
 @defproc[(with-unit
