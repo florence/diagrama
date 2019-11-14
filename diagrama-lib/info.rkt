@@ -3,7 +3,8 @@
 (define collection 'multi)
 
 (define deps
-  '(("base" #:version "7.4")
+  '("draw-lib"
+    ("base" #:version "7.4")
     "pict-lib"))
 
 
