@@ -49,8 +49,13 @@
   [<* (-> diagram? diagram? ... diagram?)]
   [*> (-> diagram? diagram? ... diagram?)]
   [split (-> diagram? diagram? diagram?)]
-  [label (-> string? (or/c 'up 'down 'left 'right) diagram?)]
+  [label (-> (or/c string?
+                   pict-convertible?)
+             (or/c 'up 'down 'left 'right) diagram?)]
   [nothing diagram?]
+
+  [pin-here
+   (-> diagram? any/c diagram?)]
  
   [with-loc (->
              (-> real? real? diagram?)
@@ -66,10 +71,13 @@
   [with-color
    (-> (-> (or/c string? (is-a?/c color%)) diagram?)
        diagram?)]
- [start-at (-> #:ud (or/c 'up 'down) #:lr (or/c 'left 'right)
-               diagram? ...
-               diagram?)]
- [line-between
+  [with-locations-of
+   (-> any/c ... procedure?
+       diagram?)]
+  [start-at (-> #:ud (or/c 'up 'down) #:lr (or/c 'left 'right)
+                diagram? ...
+                diagram?)]
+  [line-between
   (-> any/c any/c diagram?)]
  [unit-grid diagram?]))
 (require pict racket/draw pict/convert
@@ -330,6 +338,16 @@
              (diagram-state x y x0 y0 xm ym unit lw c
                             (diagram-state-coord-tags s2))))))
 
+(define (pin-here other tag)
+  ;; this is horribly slow. sorry, don't care atm
+  (define-values (_ other-state)
+    ((diagram-f other) (new-state 0 0)))
+  (match-define (list ox oy) (state-get-tag other-state tag))
+  (after
+   (move-left ox)
+   (move-up oy)
+   other))
+
       
 
 ;                                                                        
@@ -385,6 +403,18 @@
    (lambda (s)
      (thunk (diagram-state-line-width s)))))
 
+(define (with-locations-of . args)
+  (define a (reverse args))
+  (define thunk (first a))
+  (define tags (reverse (rest a)))
+  (with-state
+   (lambda (s)
+     (apply thunk
+            (append-map
+             (lambda (tag)
+               (hash-ref (diagram-state-coord-tags s) tag))
+             tags)))))
+
 (define (start-at #:ud ud #:lr lr . b)
   (for/fold ([p nothing])
             ([h (in-list (reverse b))])
@@ -414,7 +444,10 @@
        [(right) move-right]
        [(left) move-left])
      1)
-    (img (text t)))))
+    (img
+     (if (pict? t)
+         t
+         (text t))))))
 
 (define (cwhen c . p)
   (if c
@@ -448,6 +481,9 @@
       (for*/after ([y (in-range (add1 h))])
         (after (move-to (- x0 1/2) (- (+ y y0) 1/2))
                (line-right w)))))))
+  
+  
+  
 
 ;                                                                                            
 ;                                                                                            

@@ -401,6 +401,14 @@ with these).
 
 }
 
+@defproc[(with-location-of [tag any/c]
+                           [builder (-> real? real? diagram?)])
+         diagram?]{
+
+ Build a diagram using the the given named location.
+
+}
+
 @section{Circuit Helpers}
 
 @defmodule[diagrama/circuit #:use-sources (diagrama/circuit)]
@@ -411,9 +419,9 @@ lines on top of gates: @racket[before] is designed to help
 with this.
 
 @deftogether[(@defproc[(or-gate
-                        [#:n1 n1 any/c #f]
-                        [#:n2 n2 any/c #f]
-                        [#:n3 n3 any/c #f]
+                        [#:in1 n1 any/c #f]
+                        [#:in2 n2 any/c #f]
+                        [#:in3 n3 any/c #f]
                         [#:out out any/c #f]
                         [#:tag-in1 tag1 any/c #f]
                         [#:tag-in2 tag2 any/c #f]
@@ -421,9 +429,9 @@ with this.
                         [#:tag-out tag4 any/c #f])
                        diagram?]
                @defproc[(and-gate
-                         [#:n1 n1 any/c #f]
-                         [#:n2 n2 any/c #f]
-                         [#:n3 n3 any/c #f]
+                         [#:in1 n1 any/c #f]
+                         [#:in2 n2 any/c #f]
+                         [#:in3 n3 any/c #f]
                          [#:out out any/c #f]
                          [#:tag-in1 tag1 any/c #f]
                          [#:tag-in2 tag2 any/c #f]
@@ -431,13 +439,13 @@ with this.
                          [#:tag-out tag4 any/c #f])
                         diagram?]
                @defproc[(buffer
-                         [#:n2 n2 any/c #f]
+                         [#:in2 n2 any/c #f]
                          [#:out out any/c #f]
                          [#:tag-in2 tag2 any/c #f]
                          [#:tag-out tag4 any/c #f])
                         diagram?]
                @defproc[(register
-                         [#:n2 n2 any/c #f]
+                         [#:in2 n2 any/c #f]
                          [#:out out any/c #f]
                          [#:tag-in2 tag2 any/c #f]
                          [#:tag-out tag4 any/c #f])
