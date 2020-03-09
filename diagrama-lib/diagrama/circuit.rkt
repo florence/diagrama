@@ -4,7 +4,8 @@
  (contract-out
   [or-gate
    (->* ()
-        (#:in1 any/c
+        (#:line-length (>=/c 0)
+         #:in1 any/c
          #:in2 any/c
          #:in3 any/c
          #:out any/c
@@ -15,7 +16,8 @@
         diagram?)]
   [and-gate
    (->* ()
-        (#:in1 any/c
+        (#:line-length (>=/c 0)
+         #:in1 any/c
          #:in2 any/c
          #:in3 any/c
          #:out any/c
@@ -25,18 +27,19 @@
          #:tag-out any/c)
         diagram?)]
   [buffer (->* ()
-               (#:in2 any/c
+               (#:line-length (>=/c 0)#:in2 any/c
                 #:out any/c
                 #:tag-in2 any/c
                 #:tag-out any/c)
                diagram?)]
   [register
    (->* ()
-               (#:in2 any/c
-                #:out any/c
-                #:tag-in2 any/c
-                #:tag-out any/c)
-               diagram?)]))
+        (#:line-length (>=/c 0)
+         #:in2 any/c
+         #:out any/c
+         #:tag-in2 any/c
+         #:tag-out any/c)
+        diagram?)]))
 (require "main.rkt"
          racket/draw
          racket/class
@@ -118,7 +121,8 @@
      (save (if n4 (path (not-at 1 .5)) nothing)))))
 
 (define (make-gate-combinator gate)
-  (lambda (#:in1 [n1 #f]
+  (lambda (#:line-length [ll 3]
+           #:in1 [n1 #f]
            #:in2 [n2 #f]
            #:in3 [n3 #f]
            #:out [n4 #f]
@@ -131,20 +135,20 @@
       (gate n1 n2 n3 n4)
       (if tag-n1
           (save (move-up 1)
-                (line-left 3)
+                (line-left ll)
                 (tag-location tag-n1))
           nothing)
       (if tag-n2
-          (save (line-left 3)
+          (save (line-left ll)
                 (tag-location tag-n2))
           nothing)
       (if tag-n3
           (save (move-down 1)
-                (line-left 3)
+                (line-left ll)
                 (tag-location tag-n3))
           nothing)
       (if tag-n4
-          (save (line-right 3)
+          (save (line-right ll)
                 (tag-location tag-n4))
           nothing)))))
 
