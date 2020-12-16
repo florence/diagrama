@@ -263,7 +263,7 @@
  
 }
 
-@defproc[(split [d1 diagram?] [d2 diagram])
+@defproc[(split [d1 diagram?] [d2 diagram?])
          diagram?]{
  Draw @racket[d1] and @racket[d2] with the current
  state, and place a black dot at the current location. The
