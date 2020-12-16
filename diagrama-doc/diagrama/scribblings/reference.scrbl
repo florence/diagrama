@@ -251,7 +251,7 @@
 
 @defproc[(save [d diagram?] ...) diagram?]{
  Draw all of @racket[d] one after another,
- then resort the current units and location
+ then restore the current units and location
  to what they were at the start of the @racket[save].
 }
 
